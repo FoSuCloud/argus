@@ -19,7 +19,10 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.*;
 import java.net.ServerSocket;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -143,7 +146,11 @@ public class DemoIntegrationTest extends BaseHttpTest {
                 throw new RuntimeException(e);
             }
             Application.register(demoRunning::release);
-            Application.main(new String[0]);
+            try {
+                Application.main(new String[0]);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }, INTEGRATION_TEST_THREAD_POOL);
 
         // demo service

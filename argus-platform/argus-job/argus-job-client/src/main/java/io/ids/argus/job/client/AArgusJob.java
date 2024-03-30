@@ -3,6 +3,7 @@ package io.ids.argus.job.client;
 import io.ids.argus.core.conf.log.ArgusLogger;
 import io.ids.argus.job.client.job.IJobParams;
 import io.ids.argus.job.client.job.IJobResult;
+import io.ids.argus.store.client.ArgusStore;
 
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -19,6 +20,12 @@ public abstract class AArgusJob<P extends IJobParams, R extends IJobResult> {
         super();
         this.seq = seq;
         this.params = transform(params);
+        try {
+            // todo 应该在这里做吗？
+            ArgusStore.init();
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     R run() {
@@ -105,7 +112,8 @@ public abstract class AArgusJob<P extends IJobParams, R extends IJobResult> {
                 case STOPPED -> stop();
                 case COMPLETED -> complete();
                 case FAILED -> failed();
-                default -> {}
+                default -> {
+                }
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);

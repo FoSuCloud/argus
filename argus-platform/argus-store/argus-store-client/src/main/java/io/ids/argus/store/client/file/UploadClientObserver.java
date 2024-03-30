@@ -8,7 +8,6 @@ import io.ids.argus.store.client.observer.BaseClientObserver;
 import io.ids.argus.store.grpc.file.UploadRequest;
 import io.ids.argus.store.grpc.file.UploadResponse;
 
-import java.io.InputStream;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -18,12 +17,10 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
     private final CountDownLatch readyLatch = new CountDownLatch(1);
     private final CountDownLatch saveLatch = new CountDownLatch(1);
     private final CountDownLatch closeLatch = new CountDownLatch(1);
-
     private boolean ready = false;
     private boolean uploading = false;
     private boolean save = false;
     private boolean close = false;
-
 
     @Override
     public void onNext(UploadResponse uploadResponse) {
@@ -98,7 +95,7 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
         }
     }
 
-    public void upload(InputStream stream) {
+    public void upload(byte[] bytes) {
         lock();
         if (!ready) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_NOT_READY);
@@ -110,21 +107,17 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
         }
         try {
-            int len;
-            byte[] bytes = new byte[3 * 1024 * 1024];
             boolean pass;
-            while ((len = stream.read(bytes)) != -1) {
-                uploading = true;
-                sender.onNext(UploadRequest.newBuilder()
-                        .setUpload(UploadRequest.Upload.newBuilder()
-                                .setBytes(ByteString.copyFrom(bytes, 0, len))
-                                .setLen(len))
-                        .build());
-                while (uploading){
-                    pass = await();
-                    if (!pass) {
-                        throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_TIME_OUT);
-                    }
+            uploading = true;
+            sender.onNext(UploadRequest.newBuilder()
+                    .setUpload(UploadRequest.Upload.newBuilder()
+                            .setBytes(ByteString.copyFrom(bytes, 0, bytes.length))
+                            .setLen(bytes.length))
+                    .build());
+            while (uploading){
+                pass = await();
+                if (!pass) {
+                    throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_TIME_OUT);
                 }
             }
         } catch (Exception e) {

@@ -33,7 +33,7 @@ CREATE TABLE `argus_file`
     `module`         varchar(64) NOT NULL DEFAULT '' COMMENT 'file module',
     `module_version` varchar(32)          DEFAULT NULL COMMENT 'module version',
     `directory`      varchar(32) NOT NULL DEFAULT '' COMMENT 'directory name',
-    `file_id`        varchar(32) NOT NULL DEFAULT '' COMMENT 'file id',
+    `file_id`        varchar(64) NOT NULL DEFAULT '' COMMENT 'file id',
     `file_name`      varchar(32) NOT NULL DEFAULT '' COMMENT 'file name',
     `status`         tinyint unsigned NOT NULL COMMENT 'file status. 0-unknown，1-uploading，2-success，3-fail',
     `file_path`      varchar(32) NOT NULL DEFAULT '' COMMENT 'file path',

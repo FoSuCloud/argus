@@ -12,7 +12,6 @@ import io.ids.argus.store.grpc.file.FileUploadStoreServiceGrpc;
 import io.ids.argus.store.grpc.file.UploadRequest;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -34,20 +33,16 @@ public class UploadSession extends StoreSession<FileUploadStoreServiceGrpc.FileU
     }
 
     public void upload(String fileName, MultipartFile file, String module, String directory) throws IOException {
-        uploadBytes(fileName,file.getBytes(),module,directory);
-    }
-
-    public void uploadBytes(String fileName, byte[] bytes, String module, String directory) {
         UploadClientObserver observer = new UploadClientObserver();
         StreamObserver<UploadRequest> sender = stub.upload(observer);
         observer.setSender(sender);
-        InputStream stream = new ByteArrayInputStream(bytes);
+        InputStream stream = file.getInputStream();
+
         try {
-            observer.ready(fileName, bytes.length, module, directory);
-            observer.upload(stream);
+            observer.ready(fileName, file.getSize(), module, directory);
+            uploadBytes(observer, stream);
             observer.save();
-//            readyCreateFile(fileName, module, directory);
-            observer.onCompleted();
+            //observer.onCompleted();
         } catch (Exception e) {
             log.error(e.getMessage(),e);
             observer.close();
@@ -55,16 +50,11 @@ public class UploadSession extends StoreSession<FileUploadStoreServiceGrpc.FileU
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
-//    public void createFile(CreateFileRequest request) {
-//        var session = ArgusStore.get().open(CreateFileSession.class);
-//        session.createFile(request);
-//    }
-//    private void readyCreateFile(String fileName, String module,  String directory){
-//        CreateFileRequest request = CreateFileRequest.newBuilder()
-//                .setModuleName(module)
-//                .setDirectoryName(directory)
-//                .setFileName(fileName)
-//                .build();
-//        createFile(request);
-//    }
+
+    public void uploadBytes(UploadClientObserver observer,InputStream stream) throws IOException {
+        var bytes = new byte[3*1024];
+        while ((stream.read(bytes)) != -1) {
+            observer.upload(bytes);
+        }
+    }
 }

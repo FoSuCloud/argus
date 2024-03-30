@@ -7,11 +7,11 @@ if [[ $? -ne 0 ]]; then
   sudo apt install -y nodejs
 fi
 
-if [ ! -d "modelchecking" ]; then
-  mkdir modelchecking
+if [ ! -d "modelchecking-server" ]; then
+  mkdir modelchecking-server
 fi
 # work folder
-cd modelchecking
+cd modelchecking-server
 # init project
 if [ ! -f "package.json" ]; then
   npm init -y --quiet

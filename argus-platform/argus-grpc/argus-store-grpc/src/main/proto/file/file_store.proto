@@ -10,19 +10,6 @@ service FileUploadStoreService {
   rpc upload (stream UploadRequest) returns (stream UploadResponse) {}
 }
 
-//service FileStoreService {
-//  rpc createFile (CreateFileRequest) returns (CreateFileResponse) {}
-//}
-//message CreateFileRequest {
-//  string moduleName = 1;
-//  string moduleVersion = 2;
-//  string directoryName = 3;
-//  string fileName = 4;
-//}
-//message CreateFileResponse {
-//  int64 id = 1;
-//  string fileId = 2;
-//}
 message UploadRequest {
   message Ready {
     string fileName = 1;

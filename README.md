@@ -67,3 +67,6 @@ This is our QQ Group:
 3MB改为4MB试一下
 如果全部使用计时器 condition, 那么初始值应该文件分片数量
 11、60s配置
+12、之前加了sql报错是因为之前在store-client创建db， 但是不应该这样做，因为这样就没有和server分开的必要了
+13、InputStream stream = file.getInputStream(); // todo需要修改为这样 file.getInputStream() 这样走磁盘， 如果是new ByteArrayInputStream(bytes);就存储在内存中
+

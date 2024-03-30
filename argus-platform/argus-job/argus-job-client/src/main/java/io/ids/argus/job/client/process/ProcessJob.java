@@ -47,9 +47,9 @@ public class ProcessJob<P extends IJobParams, R extends IJobResult> extends AArg
         if (Objects.isNull(moduleName)) {
             throw new Exception("module name is null");
         }
-        ArgusStore.init();
         try(var session = ArgusStore.get().open(UploadSession.class)){
-            session.uploadBytes(fileName, bytes, moduleName, directory);
+            // 需要调整， 改为
+//            session.uploadBytes(fileName, bytes, moduleName, directory);
         }
     }
 

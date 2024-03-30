@@ -37,7 +37,6 @@ public class HttpController {
 
     @PutMapping("/argus/upload")
     public void upload(UploadCondition condition) throws Exception {
-        ArgusStore.init();
         try (var session = ArgusStore.get().open(UploadSession.class)) {
             session.upload(condition.getFileName(), condition.getFile(), condition.getModule(), condition.getDirectory());
         }
@@ -45,7 +44,6 @@ public class HttpController {
 
     @GetMapping("/argus/download")
     public void download(DownloadCondition condition, HttpServletResponse servletResponse) throws Exception {
-        ArgusStore.init();
         try (var session = ArgusStore.get().open(DownloadSession.class)) {
             session.download(servletResponse, condition.getFileName(), condition.getModule(), condition.getDirectory());
         }

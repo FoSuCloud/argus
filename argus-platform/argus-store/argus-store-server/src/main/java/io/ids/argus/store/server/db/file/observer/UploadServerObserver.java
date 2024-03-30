@@ -4,8 +4,11 @@ import io.grpc.stub.StreamObserver;
 import io.ids.argus.core.conf.log.ArgusLogger;
 import io.ids.argus.store.grpc.file.UploadRequest;
 import io.ids.argus.store.grpc.file.UploadResponse;
+import io.ids.argus.store.server.db.file.params.CreateFileParams;
+import io.ids.argus.store.server.db.file.session.FileStoreSession;
 import io.ids.argus.store.server.exception.ArgusFileException;
 import io.ids.argus.store.server.exception.error.FileError;
+import io.ids.argus.store.server.service.IService;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -14,18 +17,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * The observer of GRPC Session request
  */
-public class UploadServerObserver implements StreamObserver<UploadRequest> {
+public class UploadServerObserver implements StreamObserver<UploadRequest>, IService<FileStoreSession> {
     private static final ArgusLogger log = new ArgusLogger(UploadServerObserver.class);
     private final StreamObserver<UploadResponse> pusher;
     private final ReentrantLock lock = new ReentrantLock();
     private final String storageName = "storage";
     private boolean closed = false;
-    private  FileOutputStream outputStream;
+    private FileOutputStream outputStream;
     private String fileName;
     private String moduleName;
     private String extensionName;
@@ -34,6 +38,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest> {
     public UploadServerObserver(StreamObserver<UploadResponse> pusher) {
         this.pusher = pusher;
     }
+
     @Override
     public void onNext(UploadRequest request) {
         try {
@@ -73,17 +78,19 @@ public class UploadServerObserver implements StreamObserver<UploadRequest> {
                 .setReady(UploadResponse.Ready.newBuilder().build())
                 .build());
     }
+
     public void createFile() {
-//        var session = getSqlSession();
-//        var params = CreateFileParams.builder()
-//                .module(moduleName)
-//                .moduleVersion("1.0.0")
-//                .directory(directoryName)
-//                .fileName(fileName)
-//                .fileId(UUID.randomUUID().toString())
-//                .build();
-//        session.createFile(params);
+        var session = getSqlSession();
+        var params = CreateFileParams.builder()
+                .module(moduleName)
+                .moduleVersion("1.0.0")
+                .directory(directoryName)
+                .fileName(fileName)
+                .fileId(UUID.randomUUID().toString())
+                .build();
+        session.createFile(params);
     }
+
     private void upload(UploadRequest.Upload upload) throws IOException {
         log.info("uploading : {}", fileName);
         byte[] bytes = upload.getBytes().toByteArray();
@@ -100,7 +107,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest> {
         outputStream.close();
         pusher.onNext(UploadResponse.newBuilder()
                 .setSave(UploadResponse.Save.newBuilder().build()).build());
-        this.close();
+//        this.close();
     }
 
     private void fail() throws IOException {
@@ -112,12 +119,11 @@ public class UploadServerObserver implements StreamObserver<UploadRequest> {
         this.close();
     }
 
-
-    private void readyUploadStream(){
+    private void readyUploadStream() {
         Path directoryPath = this.getUploadDirectoryPath();
         Path path = Paths.get(directoryPath + File.separator + fileName);
         log.info("ready upload : {}", path);
-        try{
+        try {
             boolean exists = Files.exists(directoryPath);
             if (!exists) {
                 Files.createDirectories(directoryPath);
@@ -131,25 +137,25 @@ public class UploadServerObserver implements StreamObserver<UploadRequest> {
             Files.deleteIfExists(path);
             Files.createFile(path);
             outputStream = new FileOutputStream(path.toString());
-        } catch (Exception e){
+        } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
 
-    private Path getUploadDirectoryPath(){
+    private Path getUploadDirectoryPath() {
         StringBuilder sb = new StringBuilder();
         sb.append(storageName);
         sb.append(File.separator);
-        if(StringUtils.isNoneBlank(moduleName)){
+        if (StringUtils.isNoneBlank(moduleName)) {
             sb.append(moduleName);
             sb.append(File.separator);
         }
-        if(StringUtils.isNoneBlank(extensionName)){
+        if (StringUtils.isNoneBlank(extensionName)) {
             sb.append(extensionName);
             sb.append(File.separator);
         }
-        if(StringUtils.isNoneBlank(directoryName)){
+        if (StringUtils.isNoneBlank(directoryName)) {
             sb.append(directoryName);
             sb.append(File.separator);
         }
