@@ -54,10 +54,7 @@ service FileDownloadStoreService {
 
 message DownloadRequest {
   message Ready {
-    string fileName = 1;
-    string moduleName = 2;
-    string extensionName = 3;
-    string directoryName = 4;
+    string fileId = 1;
   }
   message Download {
     int32  len = 1;

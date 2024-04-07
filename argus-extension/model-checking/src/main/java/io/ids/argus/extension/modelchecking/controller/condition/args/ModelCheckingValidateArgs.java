@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ModelCheckingValidateArgs implements IInvokeArgs {
-    private String path;
+    private String fileName;
 }

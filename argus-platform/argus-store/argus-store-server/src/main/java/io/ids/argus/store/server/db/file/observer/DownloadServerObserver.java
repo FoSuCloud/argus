@@ -6,8 +6,12 @@ import io.ids.argus.core.conf.log.ArgusLogger;
 import io.ids.argus.store.grpc.SessionType;
 import io.ids.argus.store.grpc.file.DownloadRequest;
 import io.ids.argus.store.grpc.file.DownloadResponse;
+import io.ids.argus.store.server.db.file.entity.FileEntity;
+import io.ids.argus.store.server.db.file.result.SelectFileResult;
+import io.ids.argus.store.server.db.file.session.FileStoreSession;
 import io.ids.argus.store.server.exception.ArgusFileException;
 import io.ids.argus.store.server.exception.error.FileError;
+import io.ids.argus.store.server.service.IService;
 import io.ids.argus.store.server.session.ArgusStoreSession;
 import io.ids.argus.store.server.session.SessionFactory;
 import io.ids.argus.store.server.session.SessionManager;
@@ -27,7 +31,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * The observer of GRPC Session request
  */
-public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
+public class DownloadServerObserver implements StreamObserver<DownloadRequest>, IService<FileStoreSession> {
     private static final ArgusLogger log = new ArgusLogger(DownloadServerObserver.class);
     private final StreamObserver<DownloadResponse> pusher;
     private final String id;
@@ -35,10 +39,8 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
     private final ReentrantLock lock = new ReentrantLock();
     private final String storageName = "storage";
     private boolean closed = false;
+    private String fileId;
     private String fileName;
-    private String moduleName;
-    private String extensionName;
-    private String directoryName;
     private FileChannel channel;
 
     public DownloadServerObserver(StreamObserver<DownloadResponse> pusher) {
@@ -79,12 +81,12 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
     }
 
     private void ready(DownloadRequest.Ready ready) throws IOException {
-        // todo module name validate
-        fileName = ready.getFileName();
-        moduleName = ready.getModuleName();
-        extensionName = ready.getExtensionName();
-        directoryName = ready.getDirectoryName();
-        Path directoryPath = this.getDownloadDirectoryPath();
+        fileId = ready.getFileId();
+        var session = getSqlSession();
+        SelectFileResult file = session.selectFileByFileId(fileId);
+        Path directoryPath = this.getDownloadDirectoryPath(file.getModule(), file.getFilePath());
+
+        fileName = file.getFileName();
         Path path = Paths.get(directoryPath + File.separator + fileName);
         boolean exists = Files.exists(path);
         if (!exists) {
@@ -135,7 +137,7 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
         return len;
     }
 
-    private Path getDownloadDirectoryPath() {
+    private Path getDownloadDirectoryPath(String moduleName, String filePath) {
         StringBuilder sb = new StringBuilder();
         sb.append(storageName);
         sb.append(File.separator);
@@ -143,16 +145,13 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
             sb.append(moduleName);
             sb.append(File.separator);
         }
-        if (StringUtils.isNoneBlank(extensionName)) {
-            sb.append(extensionName);
-            sb.append(File.separator);
-        }
-        if (StringUtils.isNoneBlank(directoryName)) {
-            sb.append(directoryName);
+        if (StringUtils.isNoneBlank(filePath)) {
+            sb.append(filePath);
             sb.append(File.separator);
         }
         return Paths.get(sb.toString());
     }
+
     private void success() {
         pusher.onNext(DownloadResponse.newBuilder()
                 .setSuccess(DownloadResponse.Success.newBuilder()
@@ -160,6 +159,7 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest> {
                 .build());
         this.close();
     }
+
     private void fail() {
         pusher.onNext(DownloadResponse.newBuilder()
                 .setFail(DownloadResponse.Fail.newBuilder()

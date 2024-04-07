@@ -29,13 +29,13 @@ public class DownloadSession extends StoreSession<FileDownloadStoreServiceGrpc.F
     protected SessionType getType() {
         return SessionType.FILE;
     }
-    public void download(HttpServletResponse servletResponse, String fileName, String module,  String directory) throws IOException {
+    public void download(HttpServletResponse servletResponse, String fileId) {
         DownloadClientObserver observer = new DownloadClientObserver();
         StreamObserver<DownloadRequest> sender = stub.download(observer);
         observer.setSender(sender);
 
         try {
-            observer.ready(fileName, module, directory);
+            observer.ready(fileId);
             observer.download(servletResponse);
             observer.success();
         } catch (Exception e) {

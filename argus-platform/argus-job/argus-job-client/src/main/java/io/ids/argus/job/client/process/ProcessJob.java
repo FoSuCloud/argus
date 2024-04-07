@@ -7,10 +7,7 @@ import io.ids.argus.job.client.job.IJobResult;
 import io.ids.argus.store.client.ArgusStore;
 import io.ids.argus.store.client.session.UploadSession;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.SequenceInputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
@@ -19,7 +16,6 @@ public class ProcessJob<P extends IJobParams, R extends IJobResult> extends AArg
     protected ProcessBuilder pb;
     protected Process pr;
     protected String moduleName;
-    protected String extensionName;
     protected String fileName;
 
     protected ProcessJob(String seq, String params) {
@@ -43,13 +39,16 @@ public class ProcessJob<P extends IJobParams, R extends IJobResult> extends AArg
         return sb.toString();
     }
 
-    protected void uploadFile(String fileName, byte[] bytes, String directory) throws Exception {
+    protected void uploadFile(String fileName, byte[] bytes) throws Exception {
         if (Objects.isNull(moduleName)) {
-            throw new Exception("module name is null");
+            throw new Exception("extension name is null");
         }
         try(var session = ArgusStore.get().open(UploadSession.class)){
-            // 需要调整， 改为
-//            session.uploadBytes(fileName, bytes, moduleName, directory);
+            try (InputStream stream = new ByteArrayInputStream(bytes)) {
+                session.upload(fileName, stream, moduleName, "result", bytes.length);
+            }
+        } catch (Exception e) {
+            throw new Exception(e);
         }
     }
 

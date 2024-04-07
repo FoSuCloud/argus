@@ -2,13 +2,18 @@ package io.ids.argus.store.server.db.file.observer;
 
 import io.grpc.stub.StreamObserver;
 import io.ids.argus.core.conf.log.ArgusLogger;
+import io.ids.argus.store.grpc.SessionType;
 import io.ids.argus.store.grpc.file.UploadRequest;
 import io.ids.argus.store.grpc.file.UploadResponse;
+import io.ids.argus.store.server.constant.FileStatus;
 import io.ids.argus.store.server.db.file.params.CreateFileParams;
 import io.ids.argus.store.server.db.file.session.FileStoreSession;
 import io.ids.argus.store.server.exception.ArgusFileException;
 import io.ids.argus.store.server.exception.error.FileError;
 import io.ids.argus.store.server.service.IService;
+import io.ids.argus.store.server.session.ArgusStoreSession;
+import io.ids.argus.store.server.session.SessionFactory;
+import io.ids.argus.store.server.session.SessionManager;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -17,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -29,57 +35,54 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
     private final ReentrantLock lock = new ReentrantLock();
     private final String storageName = "storage";
     private boolean closed = false;
+    private final String sessionId;
+    private final ArgusStoreSession session;
     private FileOutputStream outputStream;
     private String fileName;
     private String moduleName;
-    private String extensionName;
     private String directoryName;
+    private String filePath;
+    private String fileId;
 
     public UploadServerObserver(StreamObserver<UploadResponse> pusher) {
+        this.sessionId = SessionManager.get().generateId();
         this.pusher = pusher;
+        session = SessionFactory.create(SessionType.FILE);
+        SessionManager.get().add(sessionId, session);
     }
 
     @Override
     public void onNext(UploadRequest request) {
         try {
             switch (request.getResultCase()) {
-                case READY:
-                    ready(request.getReady());
-                    break;
-                case UPLOAD:
-                    upload(request.getUpload());
-                    break;
-                case SAVE:
-                    save();
-                    break;
-                case CLOSE:
-                    fail();
-                    break;
-                default:
-                    break;
+                case READY -> ready(request.getReady());
+                case UPLOAD -> upload(request.getUpload());
+                case SAVE -> save();
+                case CLOSE -> fail();
+                default -> {}
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             onError(e);
+            // todo 重复上传，报错，但是client没有接收到错误，客户端等待90s才超时结束
             throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
 
     private void ready(UploadRequest.Ready ready) {
-        // todo module name validate
         fileName = ready.getFileName();
         moduleName = ready.getModuleName();
-        extensionName = ready.getExtensionName();
         directoryName = ready.getDirectoryName();
         this.readyUploadStream();
-        // todo sql
         createFile();
+        session.commit();
         pusher.onNext(UploadResponse.newBuilder()
                 .setReady(UploadResponse.Ready.newBuilder().build())
                 .build());
     }
 
     public void createFile() {
+        log.info("createFile: {}", fileName);
         var session = getSqlSession();
         var params = CreateFileParams.builder()
                 .module(moduleName)
@@ -88,12 +91,15 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
                 .fileName(fileName)
                 .fileId(UUID.randomUUID().toString())
                 .build();
-        session.createFile(params);
+        fileId = session.createFile(params);
     }
 
     private void upload(UploadRequest.Upload upload) throws IOException {
         log.info("uploading : {}", fileName);
         byte[] bytes = upload.getBytes().toByteArray();
+        var session = getSqlSession();
+        session.updateStatus(fileId, FileStatus.UPLOADING.getCode());
+        session.commit();
         outputStream.write(bytes);
         pusher.onNext(UploadResponse.newBuilder()
                 .setUploading(UploadResponse.Uploading
@@ -105,15 +111,31 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
         log.info("saving : {}", fileName);
         outputStream.flush();
         outputStream.close();
+        var session = getSqlSession();
+        session.updateStatus(fileId, FileStatus.SUCCESS.getCode());
+        session.commit();
         pusher.onNext(UploadResponse.newBuilder()
                 .setSave(UploadResponse.Save.newBuilder().build()).build());
-//        this.close();
+        this.onCompleted();
     }
 
     private void fail() throws IOException {
         log.info("upload file: {} fail", fileName);
         outputStream.close();
-        // todo 删除临时文件
+        var session = getSqlSession();
+        session.updateStatus(fileId, FileStatus.FAIL.getCode());
+        // delete tempe file
+        Path tempFilePath = Paths.get(this.filePath);
+        try {
+            boolean deleted = Files.deleteIfExists(tempFilePath);
+            if (deleted) {
+                log.info("Temporary file {} deleted.", fileName);
+            } else {
+                log.error("Temporary file {} does not exist.", fileName);
+            }
+        } catch (IOException e) {
+            log.error("Error occurred while deleting temporary file: {}", e.getMessage());
+        }
         pusher.onNext(UploadResponse.newBuilder()
                 .setClose(UploadResponse.Close.newBuilder().build()).build());
         this.close();
@@ -134,8 +156,10 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
                     Files.createDirectories(directoryPath);
                 }
             }
+            // 直接覆盖
             Files.deleteIfExists(path);
             Files.createFile(path);
+            this.filePath = path.toString();
             outputStream = new FileOutputStream(path.toString());
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -151,10 +175,6 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
             sb.append(moduleName);
             sb.append(File.separator);
         }
-        if (StringUtils.isNoneBlank(extensionName)) {
-            sb.append(extensionName);
-            sb.append(File.separator);
-        }
         if (StringUtils.isNoneBlank(directoryName)) {
             sb.append(directoryName);
             sb.append(File.separator);
@@ -167,7 +187,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
         try {
             fail();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
 
@@ -183,5 +203,10 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
             }
             closed = true;
         }
+        var session = SessionManager.get().remove(sessionId);
+        if (Objects.isNull(session)) {
+            session = this.session;
+        }
+        session.close();
     }
 }

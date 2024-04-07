@@ -68,7 +68,7 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
         }
     }
 
-    public void ready(String fileName, String module,String directory) throws IOException {
+    public void ready(String fileId) {
         if (downloading) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_ALREADY_DOWNLOAD);
         }
@@ -81,9 +81,7 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
         sender.onNext(
                 DownloadRequest.newBuilder()
                     .setReady(DownloadRequest.Ready.newBuilder()
-                        .setFileName(fileName)
-                        .setModuleName(module)
-                        .setDirectoryName(directory)
+                        .setFileId(fileId)
                         .build())
                .build()
         );

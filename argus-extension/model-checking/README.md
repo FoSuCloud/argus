@@ -7,34 +7,76 @@ model-checking is an open source project for model scanning
 
 ## Getting started
 
-### config
-You should cut the `argus-module.properties.template` file in the resources directory into the `argus-module.properties` file and change it to your local path
+### Config
+* execute the following script
+```shell
+export ARGUS_MODEL_CHECKING_RESOURCES_PATH='argus-extension/model-checking/src/main/resources'
 
-### install
-You should execute the `init.sh` script to install the model scanning script
+cp ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties.template ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+
+echo '' > ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "center.host=127.0.0.1" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "center.port=9999" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.name=modelchecking" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.version=1.0.0" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.public=${ARGUS_HOME}/output/module/module.pem" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.pkcs8=${ARGUS_HOME}/output/module/module-pkcs8.key" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "ca.public=${ARGUS_HOME}/output/ca/ca.pem" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+```
+
+### Install
+* You should execute the `model-checking-config.sh` script to install the model scanning project
 
 ### use
-#### save a model file
-Store model files in the `model-files` directory, for example
+#### Add configuration to plugin center
+* modify the file `src/main/resources/argus-center.properties`
+```text
+modules=module://demo?version=1.0.0;2.0.0,module://modelchecking?version=1.0.0;
+```
+
+#### Upload model file
+1. Download the sample model file below
 * [onnx](https://media.githubusercontent.com/media/onnx/models/main/vision/classification/squeezenet/model/squeezenet1.0-3.onnx)
 * [TensorFlow Lite](https://huggingface.co/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite)
 * [Core ML](https://raw.githubusercontent.com/Lausbert/Exermote/master/ExermoteInference/ExermoteCoreML/ExermoteCoreML/Model/Exermote.mlmodel)
 * [Darknet](https://raw.githubusercontent.com/AlexeyAB/darknet/master/cfg/yolo.cfg)
-
-#### send a post request to validate model
-* url: http://127.0.0.1:9000/argus/execute
-* body: 
+2. Call HTTP request to upload model file
+* url: http://127.0.0.1:9000/argus/upload
+* method: PUT
+* body:
 ```json
 {
-    "path": "modelchecking/1.0.0/model-checking/validate",
+    "module": "modelchecking",
+    "directory":"model",
+    "fileName": "candy.onnx",
+    "file": "candy.onnx" // file content
+}
+```
+
+#### scan model
+* url: http://127.0.0.1:9000/argus/execute
+* method: POST
+* body:
+```json
+{
+    "path": "modelchecking/1.0.0/model-checking/scan",
     "params":{
         "path":"candy.onnx"
     }
 }
 ```
 
-#### view model result
-Currently, the function of viewing model results has not been completed, but you can find the scan result file in the `scan-result` directory by converting the file name to base64 encoding.
+#### View model scan result
+* url: http://127.0.0.1:9000/argus/execute
+* method: POST
+* body:
+```json
+{
+  "path": "modelchecking/1.0.0/model-checking/status",
+  "params": {"seq":"seq-id"}
+}
+```
+* Find the seq-id from the database and view the model scan results based on the seq-id.
 
 ## 🤝 Join Community
 

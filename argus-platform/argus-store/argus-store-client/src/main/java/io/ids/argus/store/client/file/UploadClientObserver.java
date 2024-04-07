@@ -62,7 +62,6 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
     }
 
     public void ready(String fileName, long size, String moduleName,String directory) {
-        // todo 是否所有地方都应该做三个校验？
         if (uploading) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_ALREADY_UPLOAD);
         }
@@ -167,7 +166,7 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
             if(!pass){
                 throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_FAIL_MESSAGE_TIME_OUT);
             }
-        }catch (Exception e){
+        } catch (Exception e){
             log.error(e.getMessage(), e);
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_FAIL_MESSAGE_SEND_FAIL);
         }

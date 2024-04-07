@@ -16,10 +16,10 @@ import java.util.Objects;
 
 @ArgusController
 public class ModelCheckingController implements IArgusController {
-    @API(url = "/model-checking/validate")
-    public ModelCheckingJobEntity validate(ModelCheckingValidateArgs args) {
+    @API(url = "/model-checking/scan")
+    public ModelCheckingJobEntity scan(ModelCheckingValidateArgs args) {
         var params = new ModelCheckingJobParams();
-        params.setPath(args.getPath());
+        params.setFileName(args.getFileName());
         return new ModelCheckingJobEntity(params);
     }
 

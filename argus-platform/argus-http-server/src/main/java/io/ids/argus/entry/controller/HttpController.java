@@ -3,6 +3,7 @@ package io.ids.argus.entry.controller;
 import io.ids.argus.center.protocol.ProtocolData;
 import io.ids.argus.center.startup.Argus;
 import io.ids.argus.core.base.json.Transformer;
+import io.ids.argus.core.conf.exception.ArgusException;
 import io.ids.argus.entry.pojo.condition.DownloadCondition;
 import io.ids.argus.entry.pojo.condition.RequestCondition;
 import io.ids.argus.entry.pojo.condition.UploadCondition;
@@ -39,13 +40,17 @@ public class HttpController {
     public void upload(UploadCondition condition) throws Exception {
         try (var session = ArgusStore.get().open(UploadSession.class)) {
             session.upload(condition.getFileName(), condition.getFile(), condition.getModule(), condition.getDirectory());
+        } catch (Exception e) {
+            throw new Exception(e);
         }
     }
 
     @GetMapping("/argus/download")
     public void download(DownloadCondition condition, HttpServletResponse servletResponse) throws Exception {
         try (var session = ArgusStore.get().open(DownloadSession.class)) {
-            session.download(servletResponse, condition.getFileName(), condition.getModule(), condition.getDirectory());
+            session.download(servletResponse, condition.getFileId());
+        } catch (Exception e) {
+            throw new Exception(e);
         }
     }
 }

@@ -21,7 +21,6 @@ public abstract class AArgusJob<P extends IJobParams, R extends IJobResult> {
         this.seq = seq;
         this.params = transform(params);
         try {
-            // todo 应该在这里做吗？
             ArgusStore.init();
         } catch (Exception e) {
             log.error(e.getMessage(), e);

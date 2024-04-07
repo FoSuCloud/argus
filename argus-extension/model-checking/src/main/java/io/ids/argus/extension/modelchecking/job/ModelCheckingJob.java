@@ -7,16 +7,14 @@ import io.ids.argus.module.conf.ModuleProperties;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.UUID;
 
 public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCheckingJobResult> {
     private final ArgusLogger log = new ArgusLogger(ModelCheckingJob.class);
 
     public ModelCheckingJob(String seq, String params) {
         super(seq, params);
-        moduleName  = "extensions";
-        extensionName = ModuleProperties.get().getName();
-        fileName = this.getParams().getPath();
+        moduleName = ModuleProperties.get().getName();
+        fileName = this.getParams().getFileName();
     }
 
     @Override
@@ -37,7 +35,8 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
         try {
             pb.command("node", this.getScanScriptCommand(), this.getModelFilePath());
             String res = runProcess();
-            uploadFile(fileName, res.getBytes(), "result");
+            // 保存结果文件 格式为 .txt
+            uploadFile(fileName + ".txt", res.getBytes());
             return null;
         } catch (Exception e) {
             log.error("scan error:{}", e.getMessage());
@@ -45,15 +44,12 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
         return null;
     }
 
-    private void insertFile(){
-        var fileId = UUID.randomUUID().toString();
-    }
-
+    // todo modelchecking-server 路径应该在这吗
     private String getScanScriptCommand() {
-        return Paths.get("argus-extension/model-checking/modelchecking-server/dist").toAbsolutePath() + File.separator + "serve.js";
+        return Paths.get("modelchecking-server/dist").toAbsolutePath() + File.separator + "serve.js";
     }
     private String getModelFilePath() {
-        return Paths.get("storage/extensions/modelchecking/model").toAbsolutePath() + File.separator + fileName;
+        return Paths.get("storage/modelchecking/model").toAbsolutePath() + File.separator + fileName;
     }
 
     @Override

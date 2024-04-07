@@ -7,33 +7,75 @@ model-checking 是一个用于模型扫描的开源项目
 ## 入门
 
 ### 配置
-您应该将资源目录中的 `argus-module.properties.template` 文件剪切到 `argus-module.properties` 文件中，并将其更改为您的本地路径
+* 执行下面脚本
+```shell
+export ARGUS_MODEL_CHECKING_RESOURCES_PATH='argus-extension/model-checking/src/main/resources'
+
+cp ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties.template ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+
+echo '' > ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "center.host=127.0.0.1" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "center.port=9999" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.name=modelchecking" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.version=1.0.0" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.public=${ARGUS_HOME}/output/module/module.pem" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "module.pkcs8=${ARGUS_HOME}/output/module/module-pkcs8.key" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+echo "ca.public=${ARGUS_HOME}/output/ca/ca.pem" >> ${ARGUS_MODEL_CHECKING_RESOURCES_PATH}/argus-module.properties
+```
 
 ### 安装
-您应该执行 `init.sh` 脚本以安装模型扫描脚本
+* 您应该执行 `model-checking-config.sh` 脚本以安装模型扫描工程
 
 ### 使用
-#### 保存模型文件
-将模型文件存储在 `model-files` 目录中，例如：
+#### 插件中心添加配置
+* 修改文件 `src/main/resources/argus-center.properties`
+```text
+modules=module://demo?version=1.0.0;2.0.0,module://modelchecking?version=1.0.0;
+```
+
+#### 上传模型文件
+1. 下载下面的样例模型文件
 * [onnx](https://media.githubusercontent.com/media/onnx/models/main/vision/classification/squeezenet/model/squeezenet1.0-3.onnx)
 * [TensorFlow Lite](https://huggingface.co/thelou1s/yamnet/resolve/main/lite-model_yamnet_tflite_1.tflite)
 * [Core ML](https://raw.githubusercontent.com/Lausbert/Exermote/master/ExermoteInference/ExermoteCoreML/ExermoteCoreML/Model/Exermote.mlmodel)
 * [Darknet](https://raw.githubusercontent.com/AlexeyAB/darknet/master/cfg/yolo.cfg)
-
-#### 发送 POST 请求以验证模型
-* url: http://127.0.0.1:9000/argus/execute
+2. 调用接口上传模型文件
+* url: http://127.0.0.1:9000/argus/upload
+* method: PUT
 * body:
 ```json
 {
-    "path": "modelchecking/1.0.0/model-checking/validate",
+    "module": "modelchecking",
+    "directory":"model",
+    "fileName": "candy.onnx",
+    "file":"candy.onnx" // 文件内容
+}
+```
+
+#### 扫描模型
+* url: http://127.0.0.1:9000/argus/execute
+* method: POST
+* body:
+```json
+{
+    "path": "modelchecking/1.0.0/model-checking/scan",
     "params":{
         "path":"candy.onnx"
     }
 }
 ```
 
-#### 查看模型结果
-目前，查看模型结果的功能尚未完成，但您可以通过将文件名转换为 base64 编码，在 `scan-result` 目录中找到扫描结果文件。
+#### 查看模型扫描结果
+* url: http://127.0.0.1:9000/argus/execute
+* method: POST
+* body:
+```json
+{
+  "path": "modelchecking/1.0.0/model-checking/status",
+  "params": {"seq":"seq-id"}
+}
+```
+* 从数据库中查找到seq-id，根据seq-id查看模型扫描结果
 
 ## 🤝 加入社区
 加入我们的数据沙盒社区，共同探索相关技术并共同成长。我们欢迎致力于通过开源保护数据和安全且与我们志同道合的组织、团队和个人。

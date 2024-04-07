@@ -32,7 +32,6 @@ CREATE TABLE `argus_file`
     `id`             bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `module`         varchar(64) NOT NULL DEFAULT '' COMMENT 'file module',
     `module_version` varchar(32)          DEFAULT NULL COMMENT 'module version',
-    `directory`      varchar(32) NOT NULL DEFAULT '' COMMENT 'directory name',
     `file_id`        varchar(64) NOT NULL DEFAULT '' COMMENT 'file id',
     `file_name`      varchar(32) NOT NULL DEFAULT '' COMMENT 'file name',
     `status`         tinyint unsigned NOT NULL COMMENT 'file status. 0-unknown，1-uploading，2-success，3-fail',
@@ -40,6 +39,6 @@ CREATE TABLE `argus_file`
     `is_deleted`     tinyint unsigned NOT NULL DEFAULT 0 COMMENT 'file is deleted. 0-exit，1-deleted',
     `created_time`   datetime             DEFAULT NULL COMMENT 'create time',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `idx_file` (`module`,`module_version`,`directory`,`file_name`) USING BTREE,
+    UNIQUE KEY `idx_file` (`module`,`module_version`,`file_path`,`file_name`) USING BTREE,
     KEY              `idx_file_id` (`file_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

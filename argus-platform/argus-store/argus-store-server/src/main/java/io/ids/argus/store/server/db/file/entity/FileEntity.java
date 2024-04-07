@@ -32,12 +32,7 @@ public class FileEntity {
     @TableField("module_version")
     private String  moduleVersion;
     /**
-     *  file path
-     */
-    @TableField("file_path")
-    private String filePath;
-    /**
-     * Job sequence
+     * file id
      */
     @TableField("file_id")
     private String  fileId;
@@ -51,6 +46,11 @@ public class FileEntity {
      */
     @TableField("status")
     private Integer status;
+    /**
+     *  file path
+     */
+    @TableField("file_path")
+    private String filePath;
     /**
      * is_deleted
      */

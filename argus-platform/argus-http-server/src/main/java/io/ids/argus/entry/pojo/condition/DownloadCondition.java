@@ -6,9 +6,5 @@ import lombok.Data;
 @Data
 public class DownloadCondition {
     @NotBlank
-    private String module;
-    @NotBlank
-    private String fileName;
-    private String extension;
-    private String directory;
+    private String fileId;
 }

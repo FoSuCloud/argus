@@ -3,13 +3,13 @@ package io.ids.argus.extension.modelchecking.job;
 import io.ids.argus.job.client.job.IJobParams;
 
 public class ModelCheckingJobParams implements IJobParams {
-    private String path;
+    private String fileName;
 
-    public String getPath() {
-        return path;
+    public String getFileName() {
+        return fileName;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 public class UploadSession extends StoreSession<FileUploadStoreServiceGrpc.FileUploadStoreServiceStub> {
     private static final ArgusLogger log = new ArgusLogger(UploadSession.class);
@@ -32,29 +33,46 @@ public class UploadSession extends StoreSession<FileUploadStoreServiceGrpc.FileU
         return SessionType.FILE;
     }
 
-    public void upload(String fileName, MultipartFile file, String module, String directory) throws IOException {
+    public void upload(String fileName, MultipartFile file, String module, String directory) {
         UploadClientObserver observer = new UploadClientObserver();
         StreamObserver<UploadRequest> sender = stub.upload(observer);
         observer.setSender(sender);
-        InputStream stream = file.getInputStream();
 
-        try {
+        try (InputStream stream = file.getInputStream()) {
             observer.ready(fileName, file.getSize(), module, directory);
             uploadBytes(observer, stream);
             observer.save();
-            //observer.onCompleted();
         } catch (Exception e) {
-            log.error(e.getMessage(),e);
+            log.error(e.getMessage(), e);
             observer.close();
             observer.onError(e);
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
 
-    public void uploadBytes(UploadClientObserver observer,InputStream stream) throws IOException {
-        var bytes = new byte[3*1024];
-        while ((stream.read(bytes)) != -1) {
-            observer.upload(bytes);
+    public void upload(String fileName, InputStream stream, String module, String directory, long size) {
+        UploadClientObserver observer = new UploadClientObserver();
+        StreamObserver<UploadRequest> sender = stub.upload(observer);
+        observer.setSender(sender);
+
+        try (stream) {
+            observer.ready(fileName, size, module, directory);
+            uploadBytes(observer, stream);
+            observer.save();
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            observer.close();
+            observer.onError(e);
+            throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_ERROR);
+        }
+    }
+
+    public void uploadBytes(UploadClientObserver observer, InputStream stream) throws IOException {
+        var bytes = new byte[3 * 1024 * 1024];
+        int bytesRead;
+        while ((bytesRead = stream.read(bytes)) != -1) {
+            byte[] data = Arrays.copyOf(bytes, bytesRead);
+            observer.upload(data);
         }
     }
 }
