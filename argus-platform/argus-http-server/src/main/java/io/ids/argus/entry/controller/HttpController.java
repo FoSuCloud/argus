@@ -3,7 +3,6 @@ package io.ids.argus.entry.controller;
 import io.ids.argus.center.protocol.ProtocolData;
 import io.ids.argus.center.startup.Argus;
 import io.ids.argus.core.base.json.Transformer;
-import io.ids.argus.core.conf.exception.ArgusException;
 import io.ids.argus.entry.pojo.condition.DownloadCondition;
 import io.ids.argus.entry.pojo.condition.RequestCondition;
 import io.ids.argus.entry.pojo.condition.UploadCondition;

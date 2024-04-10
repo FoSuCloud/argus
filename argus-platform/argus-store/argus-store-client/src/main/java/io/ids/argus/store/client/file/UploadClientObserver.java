@@ -26,12 +26,11 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
     public void onNext(UploadResponse uploadResponse) {
         try {
             switch (uploadResponse.getResultCase()) {
-                case READY: {
+                case READY -> {
                     ready = true;
                     readyLatch.countDown();
                 }
-                break;
-                case UPLOADING: {
+                case UPLOADING -> {
                     uploading = false;
                     lock();
                     try {
@@ -40,19 +39,16 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
                         unlock();
                     }
                 }
-                break;
-                case SAVE: {
+                case SAVE -> {
                     save = true;
                     saveLatch.countDown();
                 }
-                break;
-                case CLOSE: {
+                case CLOSE -> {
                     close = true;
                     closeLatch.countDown();
                 }
-                break;
-                default:
-                    break;
+                default -> {
+                }
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -61,11 +57,11 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
         }
     }
 
-    public void ready(String fileName, long size, String moduleName,String directory) {
+    public void ready(String fileName, long size, String moduleName, String directory) {
         if (uploading) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_ALREADY_UPLOAD);
         }
-        if(save){
+        if (save) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_SAVE_HAS_SUCCESS);
         }
         if (close) {
@@ -77,7 +73,7 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
                     .setModuleName(moduleName)
                     .setFileName(fileName)
                     .setSize(size);
-            if(Objects.nonNull(directory)){
+            if (Objects.nonNull(directory)) {
                 ready.setDirectoryName(directory);
             }
             UploadRequest uploadRequest = UploadRequest.newBuilder()
@@ -90,6 +86,7 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
             }
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt(); // 重新设置中断状态
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_INTERRUPTED);
         }
     }
@@ -99,7 +96,7 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
         if (!ready) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_NOT_READY);
         }
-        if(save){
+        if (save) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_SAVE_HAS_SUCCESS);
         }
         if (close) {
@@ -113,61 +110,64 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
                             .setBytes(ByteString.copyFrom(bytes, 0, bytes.length))
                             .setLen(bytes.length))
                     .build());
-            while (uploading){
+            while (uploading) {
                 pass = await();
                 if (!pass) {
                     throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_TIME_OUT);
                 }
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt(); // 重新设置中断状态
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_INTERRUPTED);
         } finally {
             unlock();
         }
     }
 
-    public void save(){
+    public void save() {
         if (uploading) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_ALREADY_UPLOAD);
         }
-        if(save){
+        if (save) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_SAVE_HAS_SUCCESS);
         }
         if (close) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
         }
-        try{
+        try {
             sender.onNext(UploadRequest.newBuilder()
                     .setSave(UploadRequest.Save.newBuilder()
                             .build())
                     .build());
             boolean pass = isSaving();
-            if(!pass){
+            if (!pass) {
                 throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_SAVE_TIME_OUT);
             }
-        } catch (Exception e){
+        } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt(); // 重新设置中断状态
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_UPLOAD_INTERRUPTED);
         }
     }
 
-    public void close(){
+    public void close() {
         if (close) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
         }
         sender.onNext(
-            UploadRequest.newBuilder()
-                    .setClose(UploadRequest.Close.newBuilder()
-                            .build())
-                    .build());
-        try{
+                UploadRequest.newBuilder()
+                        .setClose(UploadRequest.Close.newBuilder()
+                                .build())
+                        .build());
+        try {
             boolean pass = isClose();
-            if(!pass){
+            if (!pass) {
                 throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_FAIL_MESSAGE_TIME_OUT);
             }
-        } catch (Exception e){
+        } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt(); // 重新设置中断状态
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_FAIL_MESSAGE_SEND_FAIL);
         }
     }
@@ -175,9 +175,11 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
     private boolean isReadying() throws InterruptedException {
         return readyLatch.await(60, TimeUnit.SECONDS);
     }
+
     private boolean isClose() throws InterruptedException {
         return closeLatch.await(60, TimeUnit.SECONDS);
     }
+
     private boolean isSaving() throws InterruptedException {
         return saveLatch.await(60, TimeUnit.SECONDS);
     }

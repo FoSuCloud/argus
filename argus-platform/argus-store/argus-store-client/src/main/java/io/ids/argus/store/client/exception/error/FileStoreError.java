@@ -23,8 +23,8 @@ public enum FileStoreError implements IError {
     FILE_SESSION_ALREADY_DOWNLOAD (81012, "already download"),
     FILE_SESSION_DOWNLOAD_TIME_OUT (81013, "File download timed out"),
     FILE_SESSION_DOWNLOAD_INTERRUPTED(81014,"File download was interrupted"),
-    FILE_SESSION_DOWNLOAD_NOT_READY(81005,"File not ready to download yet"),
-    FILE_SESSION_DOWNLOAD_IS_SUCCESS (81006, "File download has completed"),
+    FILE_SESSION_DOWNLOAD_NOT_READY(81015,"File not ready to download yet"),
+    FILE_SESSION_DOWNLOAD_IS_SUCCESS (81016, "File download has completed"),
 
             ;
     private final int code;

@@ -33,7 +33,6 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
     private static final ArgusLogger log = new ArgusLogger(UploadServerObserver.class);
     private final StreamObserver<UploadResponse> pusher;
     private final ReentrantLock lock = new ReentrantLock();
-    private final String storageName = "storage";
     private boolean closed = false;
     private final String sessionId;
     private final ArgusStoreSession session;
@@ -59,12 +58,12 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
                 case UPLOAD -> upload(request.getUpload());
                 case SAVE -> save();
                 case CLOSE -> fail();
-                default -> {}
+                default -> {
+                }
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             onError(e);
-            // todo 重复上传，报错，但是client没有接收到错误，客户端等待90s才超时结束
             throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
         }
     }
@@ -86,6 +85,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
         var session = getSqlSession();
         var params = CreateFileParams.builder()
                 .module(moduleName)
+                // 现在都使用默认版本 1.0.0
                 .moduleVersion("1.0.0")
                 .directory(directoryName)
                 .fileName(fileName)
@@ -156,9 +156,11 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
                     Files.createDirectories(directoryPath);
                 }
             }
-            // 直接覆盖
-            Files.deleteIfExists(path);
-            Files.createFile(path);
+            if (Files.exists(path)) {
+                throw new ArgusFileException(FileError.FILE_EXISTS_ERROR);
+            } else {
+                Files.createFile(path);
+            }
             this.filePath = path.toString();
             outputStream = new FileOutputStream(path.toString());
         } catch (Exception e) {
@@ -169,7 +171,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
 
     private Path getUploadDirectoryPath() {
         StringBuilder sb = new StringBuilder();
-        sb.append(storageName);
+        sb.append("storage");
         sb.append(File.separator);
         if (StringUtils.isNoneBlank(moduleName)) {
             sb.append(moduleName);

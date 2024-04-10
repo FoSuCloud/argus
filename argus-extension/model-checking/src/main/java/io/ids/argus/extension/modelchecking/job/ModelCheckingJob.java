@@ -26,14 +26,14 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
     public ModelCheckingJobResult onRun() {
         String result = null;
         if (running()) {
-            result = this.scan();
+            result = this.modelChecking();
         }
         return new ModelCheckingJobResult(result);
     }
 
-    private String scan() {
+    private String modelChecking() {
         try {
-            pb.command("node", this.getScanScriptCommand(), this.getModelFilePath());
+            pb.command("node", this.getScriptCommand(), this.getModelFilePath());
             String res = runProcess();
             // 保存结果文件 格式为 .txt
             uploadFile(fileName + ".txt", res.getBytes());
@@ -44,8 +44,7 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
         return null;
     }
 
-    // todo modelchecking-server 路径应该在这吗
-    private String getScanScriptCommand() {
+    private String getScriptCommand() {
         return Paths.get("modelchecking-server/dist").toAbsolutePath() + File.separator + "serve.js";
     }
     private String getModelFilePath() {
@@ -55,6 +54,6 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
     @Override
     public void onComplete() {
         super.onComplete();
-        log.debug("scan task complete");
+        log.info("model-checking task complete");
     }
 }

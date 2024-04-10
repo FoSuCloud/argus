@@ -8,6 +8,7 @@ import io.ids.argus.store.client.observer.BaseClientObserver;
 import io.ids.argus.store.grpc.file.DownloadRequest;
 import io.ids.argus.store.grpc.file.DownloadResponse;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -27,12 +28,11 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
     public void onNext(DownloadResponse downloadResponse) {
         try {
             switch (downloadResponse.getResultCase()) {
-                case READY: {
+                case READY -> {
                     ready = true;
                     readyLatch.countDown();
                 }
-                break;
-                case DOWNLOAD: {
+                case DOWNLOAD -> {
                     lock();
                     try {
                         ByteString byteString = downloadResponse.getDownload().getByte();
@@ -48,19 +48,16 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
                         unlock();
                     }
                 }
-                break;
-                case SUCCESS: {
+                case SUCCESS -> {
                     success = true;
                     successLatch.countDown();
                 }
-                break;
-                case FAIL: {
+                case FAIL -> {
                     fail = true;
                     failLatch.countDown();
                 }
-                break;
-                default:
-                    break;
+                default -> {
+                }
             }
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -80,10 +77,10 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
         }
         sender.onNext(
                 DownloadRequest.newBuilder()
-                    .setReady(DownloadRequest.Ready.newBuilder()
-                        .setFileId(fileId)
-                        .build())
-               .build()
+                        .setReady(DownloadRequest.Ready.newBuilder()
+                                .setFileId(fileId)
+                                .build())
+                        .build()
         );
         try {
             boolean pass = isReadying();
@@ -92,6 +89,7 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
             }
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt();
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_DOWNLOAD_INTERRUPTED);
         }
     }
@@ -124,7 +122,7 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
 
     private int sliceDownload(byte[] readBytes) {
         if (success) {
-             return -1;
+            return -1;
         }
         if (fail) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
@@ -132,11 +130,11 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
         downloading = true;
         try {
             sender.onNext(
-                DownloadRequest.newBuilder()
-                .setDownload(DownloadRequest.Download.newBuilder()
-                        .setLen(readBytes.length)
-                        .build())
-                .build()
+                    DownloadRequest.newBuilder()
+                            .setDownload(DownloadRequest.Download.newBuilder()
+                                    .setLen(readBytes.length)
+                                    .build())
+                            .build()
             );
             while (downloading) {
                 boolean pass = await();
@@ -148,13 +146,15 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
                 System.arraycopy(bytes, 0, readBytes, 0, bytes.length);
                 return bytes.length;
             }
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt();
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_DOWNLOAD_ERROR);
         }
         return -1;
     }
-    public void success()  {
+
+    public void success() {
         if (success) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
         }
@@ -173,9 +173,11 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
             }
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt();
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_DOWNLOAD_ERROR);
         }
     }
+
     public void fail() {
         if (success) {
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_CLOSED);
@@ -195,15 +197,19 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
             }
         } catch (InterruptedException e) {
             log.error(e.getMessage(), e);
+            Thread.currentThread().interrupt();
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_DOWNLOAD_ERROR);
         }
     }
+
     private boolean isReadying() throws InterruptedException {
         return readyLatch.await(60, TimeUnit.SECONDS);
     }
+
     private boolean isSuccess() throws InterruptedException {
         return successLatch.await(60, TimeUnit.SECONDS);
     }
+
     private boolean isFailing() throws InterruptedException {
         return failLatch.await(60, TimeUnit.SECONDS);
     }
