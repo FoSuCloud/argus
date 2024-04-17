@@ -213,4 +213,15 @@ public class DownloadClientObserver extends BaseClientObserver<DownloadRequest, 
     private boolean isFailing() throws InterruptedException {
         return failLatch.await(60, TimeUnit.SECONDS);
     }
+
+    public void onError(Throwable throwable) {
+        super.onError(throwable);
+    }
+
+    @Override
+    public void destroy() {
+        readyLatch.countDown();
+        successLatch.countDown();
+        failLatch.countDown();
+    }
 }

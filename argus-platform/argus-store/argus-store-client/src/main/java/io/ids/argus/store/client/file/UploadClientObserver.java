@@ -172,6 +172,17 @@ public class UploadClientObserver extends BaseClientObserver<UploadRequest, Uplo
         }
     }
 
+    public void onError(Throwable throwable) {
+        super.onError(throwable);
+    }
+
+    @Override
+    public void destroy() {
+        readyLatch.countDown();
+        saveLatch.countDown();
+        closeLatch.countDown();
+    }
+
     private boolean isReadying() throws InterruptedException {
         return readyLatch.await(60, TimeUnit.SECONDS);
     }

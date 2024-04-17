@@ -29,6 +29,7 @@ public class DownloadSession extends StoreSession<FileDownloadStoreServiceGrpc.F
     protected SessionType getType() {
         return SessionType.FILE;
     }
+
     public void download(HttpServletResponse servletResponse, String fileId) {
         DownloadClientObserver observer = new DownloadClientObserver();
         StreamObserver<DownloadRequest> sender = stub.download(observer);
@@ -40,6 +41,7 @@ public class DownloadSession extends StoreSession<FileDownloadStoreServiceGrpc.F
             observer.success();
         } catch (Exception e) {
             observer.fail();
+            observer.onError(e);
             log.error(e.getMessage(),e);
             throw new ArgusFileStoreException(FileStoreError.FILE_SESSION_DOWNLOAD_ERROR);
         }

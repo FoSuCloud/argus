@@ -10,6 +10,7 @@ import io.ids.argus.store.server.db.file.params.CreateFileParams;
 import io.ids.argus.store.server.db.file.session.FileStoreSession;
 import io.ids.argus.store.server.exception.ArgusFileException;
 import io.ids.argus.store.server.exception.error.FileError;
+import io.ids.argus.store.server.service.BaseServerObserver;
 import io.ids.argus.store.server.service.IService;
 import io.ids.argus.store.server.session.ArgusStoreSession;
 import io.ids.argus.store.server.session.SessionFactory;
@@ -29,7 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * The observer of GRPC Session request
  */
-public class UploadServerObserver implements StreamObserver<UploadRequest>, IService<FileStoreSession> {
+public class UploadServerObserver extends BaseServerObserver<UploadResponse, UploadRequest> implements IService<FileStoreSession> {
     private static final ArgusLogger log = new ArgusLogger(UploadServerObserver.class);
     private final StreamObserver<UploadResponse> pusher;
     private final ReentrantLock lock = new ReentrantLock();
@@ -44,28 +45,11 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
     private String fileId;
 
     public UploadServerObserver(StreamObserver<UploadResponse> pusher) {
+        super(pusher);
         this.sessionId = SessionManager.get().generateId();
         this.pusher = pusher;
         session = SessionFactory.create(SessionType.FILE);
         SessionManager.get().add(sessionId, session);
-    }
-
-    @Override
-    public void onNext(UploadRequest request) {
-        try {
-            switch (request.getResultCase()) {
-                case READY -> ready(request.getReady());
-                case UPLOAD -> upload(request.getUpload());
-                case SAVE -> save();
-                case CLOSE -> fail();
-                default -> {
-                }
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            onError(e);
-            throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
-        }
     }
 
     private void ready(UploadRequest.Ready ready) {
@@ -165,7 +149,7 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
             outputStream = new FileOutputStream(path.toString());
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
+            exception(e);
         }
     }
 
@@ -184,6 +168,38 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
         return Paths.get(sb.toString());
     }
 
+    public void close() {
+        synchronized (lock) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+        }
+        var session = SessionManager.get().remove(sessionId);
+        if (Objects.isNull(session)) {
+            session = this.session;
+        }
+        session.close();
+    }
+
+    @Override
+    public void onNext(UploadRequest request) {
+        try {
+            switch (request.getResultCase()) {
+                case READY -> ready(request.getReady());
+                case UPLOAD -> upload(request.getUpload());
+                case SAVE -> save();
+                case CLOSE -> fail();
+                default -> {
+                }
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            exception(e);
+            throw new ArgusFileException(FileError.FILE_SESSION_UPLOAD_ERROR);
+        }
+    }
+
     @Override
     public void onError(Throwable throwable) {
         try {
@@ -198,17 +214,4 @@ public class UploadServerObserver implements StreamObserver<UploadRequest>, ISer
         close();
     }
 
-    public void close() {
-        synchronized (lock) {
-            if (closed) {
-                return;
-            }
-            closed = true;
-        }
-        var session = SessionManager.get().remove(sessionId);
-        if (Objects.isNull(session)) {
-            session = this.session;
-        }
-        session.close();
-    }
 }

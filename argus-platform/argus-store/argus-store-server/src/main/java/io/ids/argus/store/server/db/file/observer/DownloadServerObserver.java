@@ -6,11 +6,13 @@ import io.ids.argus.core.conf.log.ArgusLogger;
 import io.ids.argus.store.grpc.SessionType;
 import io.ids.argus.store.grpc.file.DownloadRequest;
 import io.ids.argus.store.grpc.file.DownloadResponse;
+import io.ids.argus.store.grpc.file.UploadRequest;
 import io.ids.argus.store.server.db.file.entity.FileEntity;
 import io.ids.argus.store.server.db.file.result.SelectFileResult;
 import io.ids.argus.store.server.db.file.session.FileStoreSession;
 import io.ids.argus.store.server.exception.ArgusFileException;
 import io.ids.argus.store.server.exception.error.FileError;
+import io.ids.argus.store.server.service.BaseServerObserver;
 import io.ids.argus.store.server.service.IService;
 import io.ids.argus.store.server.session.ArgusStoreSession;
 import io.ids.argus.store.server.session.SessionFactory;
@@ -31,7 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * The observer of GRPC Session request
  */
-public class DownloadServerObserver implements StreamObserver<DownloadRequest>, IService<FileStoreSession> {
+public class DownloadServerObserver extends BaseServerObserver<DownloadResponse,DownloadRequest> implements IService<FileStoreSession> {
     private static final ArgusLogger log = new ArgusLogger(DownloadServerObserver.class);
     private final StreamObserver<DownloadResponse> pusher;
     private final String id;
@@ -44,40 +46,11 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest>, 
     private FileChannel channel;
 
     public DownloadServerObserver(StreamObserver<DownloadResponse> pusher) {
+        super(pusher);
         this.id = SessionManager.get().generateId();
         this.pusher = pusher;
         session = SessionFactory.create(SessionType.FILE);
         SessionManager.get().add(id, session);
-    }
-
-    @Override
-    public void onNext(DownloadRequest request) {
-        try {
-            switch (request.getResultCase()) {
-                case READY:
-                    ready(request.getReady());
-                    log.info("ready download : {}", fileName);
-                    break;
-                case DOWNLOAD:
-                    log.info("downloading : {}", fileName);
-                    download(request.getDownload());
-                    break;
-                case SUCCESS:
-                    log.info("success download file: {}", fileName);
-                    success();
-                    break;
-                case FAIL:
-                    log.info("close download file: {}", fileName);
-                    fail();
-                    break;
-                default:
-                    break;
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            fail();
-            throw new ArgusFileException(FileError.FILE_SESSION_DOWNLOAD_ERROR);
-        }
     }
 
     private void ready(DownloadRequest.Ready ready) throws IOException {
@@ -169,6 +142,36 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest>, 
     }
 
     @Override
+    public void onNext(DownloadRequest request) {
+        try {
+            switch (request.getResultCase()) {
+                case READY:
+                    ready(request.getReady());
+                    log.info("ready download : {}", fileName);
+                    break;
+                case DOWNLOAD:
+                    log.info("downloading : {}", fileName);
+                    download(request.getDownload());
+                    break;
+                case SUCCESS:
+                    log.info("success download file: {}", fileName);
+                    success();
+                    break;
+                case FAIL:
+                    log.info("close download file: {}", fileName);
+                    fail();
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            exception(e);
+            throw new ArgusFileException(FileError.FILE_SESSION_DOWNLOAD_ERROR);
+        }
+    }
+
+    @Override
     public void onError(Throwable throwable) {
         close();
     }
@@ -176,10 +179,6 @@ public class DownloadServerObserver implements StreamObserver<DownloadRequest>, 
     @Override
     public void onCompleted() {
         close();
-    }
-
-    public String getId() {
-        return id;
     }
 
     public void close() {

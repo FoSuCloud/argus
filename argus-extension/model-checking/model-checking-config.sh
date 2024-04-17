@@ -6,6 +6,8 @@ if [[ $? -ne 0 ]]; then
   curl -sL https://deb.nodesource.com/setup_18.x | sudo bash -
   sudo apt install -y nodejs
 fi
+# 安装在上一级目录
+cd ..
 
 if [ ! -d "modelchecking-server" ]; then
   mkdir modelchecking-server

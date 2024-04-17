@@ -45,7 +45,7 @@ public class ModelCheckingJob extends ProcessJob<ModelCheckingJobParams, ModelCh
     }
 
     private String getScriptCommand() {
-        return Paths.get("modelchecking-server/dist").toAbsolutePath() + File.separator + "serve.js";
+        return Paths.get("argus-extension/modelchecking-server/dist").toAbsolutePath() + File.separator + "serve.js";
     }
     private String getModelFilePath() {
         return Paths.get("storage/modelchecking/model").toAbsolutePath() + File.separator + fileName;
