@@ -48,6 +48,3 @@ build/
 argus-tests/src/main/resources/env.properties
 argus-tests/src/main/resources/output/
 argus-tests/src/main/resources/generate.sh
-
-#### modelchecking-server ###
-modelchecking-server

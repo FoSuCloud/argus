@@ -7,11 +7,12 @@ import io.ids.argus.extension.modelchecking.controller.condition.args.ModelCheck
 import io.ids.argus.extension.modelchecking.controller.condition.args.ModelCheckingValidateArgs;
 import io.ids.argus.extension.modelchecking.controller.condition.entity.ModelCheckingJobEntity;
 import io.ids.argus.extension.modelchecking.controller.condition.result.StatusOutput;
+import io.ids.argus.extension.modelchecking.exception.ModelCheckingException;
+import io.ids.argus.extension.modelchecking.exception.error.ModelCheckingError;
 import io.ids.argus.extension.modelchecking.job.ModelCheckingJobParams;
 import io.ids.argus.store.client.ArgusStore;
 import io.ids.argus.store.client.session.JobSession;
 import io.ids.argus.store.grpc.job.JobStoreStatusEnum;
-
 import java.util.Objects;
 
 @ArgusController
@@ -25,7 +26,6 @@ public class ModelCheckingController implements IArgusController {
 
     @API(url = "/model-checking/status")
     public StatusOutput getStatus(ModelCheckingInfoStatusArgs args) throws Exception {
-        ArgusStore.init();
         try (var session = ArgusStore.get().open(JobSession.class)) {
             JobStoreStatusEnum status = session.readState(args.getSeq());
             if (Objects.isNull(status)) {
@@ -33,7 +33,7 @@ public class ModelCheckingController implements IArgusController {
             }
             return new StatusOutput(status);
         } catch (Exception e) {
-            throw new Exception(e);
+            throw new ModelCheckingException(ModelCheckingError.ERROR_QUERY_STATUS);
         }
     }
 }
