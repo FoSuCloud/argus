@@ -19,10 +19,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.*;
 import java.net.ServerSocket;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -57,10 +54,10 @@ public class DemoIntegrationTest extends BaseHttpTest {
     static void init() throws InterruptedException {
         // generate certificates
         String workPath = System.getProperty("user.dir") + "/src/main/resources/";
-//        exec(Arrays.asList("sh", workPath + "mirror_certificate.sh"), workPath);
-//
-//        // generate properties file if not exists
-//        exec(Arrays.asList("sh", workPath + "mirror_properties.sh"), workPath);
+        exec(Arrays.asList("sh", workPath + "mirror_certificate.sh"), workPath);
+
+        // generate properties file if not exists
+        exec(Arrays.asList("sh", workPath + "mirror_properties.sh"), workPath);
 
         String caPath = workPath + "output/ca/ca.pem";
         String centerPublicPath = workPath + "output/center/center.pem";

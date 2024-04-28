@@ -158,7 +158,7 @@ public class DownloadServerObserver extends BaseServerObserver<DownloadResponse,
                     success();
                     break;
                 case FAIL:
-                    log.info("close download file: {}", fileName);
+                    log.info("fail download file: {}", fileName);
                     fail();
                     break;
                 default:

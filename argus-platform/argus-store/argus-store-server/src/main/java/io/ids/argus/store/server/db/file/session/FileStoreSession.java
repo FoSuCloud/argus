@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * Job Store Session is used to operate the database data of Job
+ * Job Store Session is used to operate file
  */
 public class FileStoreSession extends ArgusSqlStoreSession<FileMapper> {
     @Override
